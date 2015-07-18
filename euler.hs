@@ -941,3 +941,17 @@ problem41 = maximum $ do
   return n
 
 -- problem 42
+
+triangleNumbers :: [Integer]
+triangleNumbers = map (\i -> (i * (i + 1) `div` 2)) [1..]
+
+isTriangleNumber :: Integer -> Bool
+isTriangleNumber n = not $ null $ filter (== n) $ takeWhile (<= n) triangleNumbers
+
+problem42 :: IO Int
+problem42 = do
+  text <- readFile "p042_words.txt"
+  let words = prepNames text
+  return $ length $ filter isTriangleNumber $ map wordValue words
+
+-- problem 43
