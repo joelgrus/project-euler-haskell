@@ -7,6 +7,8 @@ import qualified Data.Array as Array
 import qualified Data.Char as Char
 import qualified Data.List as List
 import qualified Data.Map as Map
+import qualified Data.Maybe as Maybe
+import qualified Data.Ord as Ord
 import Data.Set (Set)
 import qualified Data.Set as Set
 
@@ -857,3 +859,85 @@ truncations n = n : (leftTruncations ++ rightTruncations)
     rightTruncations = tail $ take numDigits $ iterate removeDigitsFromRight n
 
 problem37 = sum $ map (!! 0) $ take 11 $ filter (all isPrime) $ map truncations (drop 4 primes)
+
+-- problem 38 -- pandigital multiples
+
+multiplesOf :: Integer -> [Integer]
+multiplesOf n = map (* n) [1 ..]
+
+makesPandigital :: [Integer] -> Maybe [Int]
+makesPandigital xs = loop [] xs
+  where
+    loop :: [Int] -> [Integer] -> Maybe [Int]
+    loop digits (n:ns)
+      | isPandigital digits = Just digits
+      | 9 < length digits = Nothing
+      | otherwise = loop (digits ++ integerToDigits n) ns
+
+problem38 :: [Int]
+problem38 = maximum $ do
+  n <- [2 .. 9999]
+  guard $ areDistinct $ integerToDigits n
+  let pd = makesPandigital $ multiplesOf n
+  guard $ Maybe.isJust pd
+  return $ Maybe.fromJust pd
+
+-- problem 39 -- integer right triangles
+
+isPythagorean :: Int -> Int -> Int -> Bool
+isPythagorean a b c = c * c - a * a - b * b == 0
+
+mostFrequent :: (Ord a) => [a] -> a
+mostFrequent = head . List.maximumBy (Ord.comparing length) . List.group . List.sort
+
+problem39 :: Int
+problem39 = mostFrequent $ do
+  a <- [1..333]
+  b <- [a..500]
+  c <- [b..(1000-a-b)]
+  guard $ isPythagorean a b c
+  return $ a + b + c
+
+-- problem 40 :: Champernowne's constant
+
+extractNthDigits :: [Int] -> [Int] -> [Int]
+extractNthDigits ns digits = loop [] (List.sort ns) (zip [1..] digits)
+  where
+    loop result [] _ = result
+    loop result xxs@(x:xs) ((i,d):ds)
+      | x == i = loop (result ++ [d]) xs ds
+      | otherwise = loop result xxs ds
+
+concatenateTheIntegers :: [Int]
+concatenateTheIntegers = do
+  n <- [1..]
+  digit <- integerToDigits n
+  return digit
+
+problem40 :: Integer
+problem40 = product $ map toInteger $ extractNthDigits powersOf10 concatenateTheIntegers
+  where powersOf10 = map (10 ^) [0..6]
+
+-- problem 41
+
+permutations :: [a] -> [[a]]
+permutations [] = [[]]
+permutations (x:xs) = do
+  let n = length xs
+  subPerm <- permutations xs
+  i <- [0 .. n]
+  return $ (take i subPerm) ++ [x] ++ (drop i subPerm)
+
+pandigitals :: Int -> [Integer]
+pandigitals n = do
+  digits <- permutations [1..n]
+  return $ toInteger $ intFromDigits digits
+
+problem41 :: Integer
+problem41 = maximum $ do
+  i <- [1..9]
+  n <- pandigitals i
+  guard $ isPrime n
+  return n
+
+-- problem 42
