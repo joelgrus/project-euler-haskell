@@ -955,3 +955,28 @@ problem42 = do
   return $ length $ filter isTriangleNumber $ map wordValue words
 
 -- problem 43
+
+isSubstringDivisible :: [Int] -> [Int] -> Int -> Bool
+isSubstringDivisible values indexes n =
+  substring `isDivisibleBy` toInteger n
+  where
+    substring = toInteger $ intFromDigits $ extractNthDigits indexes values
+
+specialSubstringProperty :: Integer -> Bool
+specialSubstringProperty = ssp . integerToDigits
+  where
+    factors = [2, 3, 5, 7, 11, 13, 17, 19, 23]
+    ssp :: [Int] -> Bool
+    ssp digits = foldr (&&) True $ do
+      start <- [2..8]
+      let factor = factors !! (start - 2)
+      let indexes = [start..(start+2)]
+      return $ isSubstringDivisible digits indexes factor
+
+problem43 :: Integer
+problem43 = sum $ do
+  digits <- permutations [0..9]
+  guard $ (digits !! 0) /= 0
+  let n = integerFromDigits digits
+  guard $ specialSubstringProperty n
+  return n
