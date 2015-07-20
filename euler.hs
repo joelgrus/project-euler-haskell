@@ -954,7 +954,7 @@ problem42 = do
   let words = prepNames text
   return $ length $ filter isTriangleNumber $ map wordValue words
 
--- problem 43
+-- problem 43 - sub-string divisibility
 
 isSubstringDivisible :: [Int] -> [Int] -> Int -> Bool
 isSubstringDivisible values indexes n =
@@ -980,3 +980,147 @@ problem43 = sum $ do
   let n = integerFromDigits digits
   guard $ specialSubstringProperty n
   return n
+
+-- problem 44 - pentagon numbers
+
+pentagonal :: Integer -> Integer
+pentagonal i = (3 * i * i - i) `div` 2
+
+pentagonals :: [Integer]
+pentagonals = map pentagonal [1..]
+
+inversePentagonal :: Integer -> Integer
+inversePentagonal n = (1 + isqrt (1 + 24 * n)) `div` 6
+
+isPentagonal :: Integer -> Bool
+--isPentagonal n = not $ null $ filter (== n) $ takeWhile (<= n) pentagonals
+isPentagonal n = n == (pentagonal $ inversePentagonal n)
+
+isPentagonalPair :: Integer -> Integer -> Bool
+isPentagonalPair a b = (isPentagonal (a + b)) && (isPentagonal (b - a))
+
+pentagonalPairsAt :: Int -> [(Integer, Integer)]
+pentagonalPairsAt n = do
+  a <- [0 .. n]
+  let b = n - a
+  guard $ a < b
+  let pa = pentagonals !! a
+  let pb = pentagonals !! b
+  guard $ isPentagonalPair pa pb
+  return (pa, pb)
+
+-- (1560090,7042750) - delta is 5482660, is pentagonal 1912
+firstPentagonalPair :: (Integer, Integer)
+firstPentagonalPair = head $ do
+  n <- [1..]
+  pair <- trace (show n) $ pentagonalPairsAt n
+  return pair
+
+
+problem44 :: [(Integer, Integer)]
+problem44 = error "TODO: show that firstPentagonalPair is optimal"
+
+-- problem 45 - triangular, pentagonal, and hexagonal
+
+triangular :: Integer -> Integer
+triangular n = (n * (n + 1)) `div` 2
+
+inverseTriangular :: Integer -> Integer
+inverseTriangular t = ((isqrt $ 1 + 8 * t) - 1) `div` 2
+
+isTriangular :: Integer -> Bool
+isTriangular n = n == (triangular $ inverseTriangular n)
+
+hexagonal :: Integer -> Integer
+hexagonal n = n * (2 * n - 1)
+
+problem45 :: [Integer]
+problem45 = take 2 $ do
+  n <- [143..]
+  let h = hexagonal n
+  guard $ isTriangular h
+  guard $ isPentagonal h
+  return h
+
+-- problem 46 - goldback's other conjecture
+
+secondConjecture :: Integer -> Bool
+secondConjecture n = not $ null $ do
+  twiceSquare <- takeWhile (< n) $ map (\x -> 2 * x * x) $ [1..]
+  guard $ isPrime $ n - twiceSquare
+  return twiceSquare
+
+problem46 :: Integer
+problem46 = head $ do
+  x <- [3, 5..]
+  guard $ not $ isPrime x
+  guard $ not $ secondConjecture x
+  return x
+
+-- problem 47 - four distinct prime factors
+
+numDistinctPrimeFactors :: Integer -> Int
+numDistinctPrimeFactors = MultiSet.distinctSize . multiFactors
+
+problem47 :: Integer
+problem47 = loop $ map (\i -> (i, numDistinctPrimeFactors i)) [1..]
+  where
+    loop ((i,4):(_,4):(_,4):(_,4):_) = i
+    loop (x:xs) = loop xs
+
+-- problem 48 - self powers
+
+powerAndMod :: Int -> Int -> Integer -> Integer
+powerAndMod x y n = foldr (\a b -> (a * b) `mod` n) 1 xs
+  where
+    xs = take y $ repeat (toInteger x)
+
+problem48 = total `mod` n
+  where
+    total = sum $ do
+      i <- [1..1000]
+      return $ powerAndMod i i n
+    n = 10 ^ 10
+
+-- problem 49 - prime permutations
+
+fourDigitPrimes = filter (>= 1000) $ takeWhile (<= 9999) primes
+
+arePermutations :: Integer -> Integer -> Bool
+arePermutations p q = (List.sort pDigits) == (List.sort qDigits)
+  where
+    pDigits = integerToDigits p
+    qDigits = integerToDigits q
+
+problem49 :: [[Integer]]
+problem49 = do
+  p <- fourDigitPrimes
+  q <- filter (> p) fourDigitPrimes
+  guard $ arePermutations p q
+  let r = q + (q - p)
+  guard $ arePermutations p r
+  guard $ r `Set.member` primeSet
+  return [p, q, r]
+  where primeSet = Set.fromList fourDigitPrimes
+
+-- problem 50 - sums of consecutive primes
+
+-- if we need at least 21 terms, and they add to at most 1 million,
+-- they cant be larger than 50000
+smallPrimes :: [Integer]
+smallPrimes = takeWhile (< 50000) primes
+
+consecutivePrimesFrom :: Integer -> [(Integer, Integer)]
+consecutivePrimesFrom p = do
+  (i, q) <- zip [0..] cumsums
+  guard $ isPrime q
+  return (i, q)
+  where
+    sp = dropWhile (< p) smallPrimes
+    cumsums = takeWhile (< 1000000) $ List.scanl (+) 0 sp
+
+problem50 :: Integer
+problem50 = snd $ maximum $ do
+  p <- smallPrimes
+  iq <- consecutivePrimesFrom p
+  return iq
