@@ -1,5 +1,5 @@
-import Debug.Trace (trace)
-import Control.Monad (guard)
+import Debug.Trace (trace, traceShow)
+import Control.Monad (guard, liftM)
 import qualified Data.MultiSet as MultiSet
 import Data.Char (digitToInt)
 import Data.Array ((!))
@@ -1124,3 +1124,69 @@ problem50 = snd $ maximum $ do
   p <- smallPrimes
   iq <- consecutivePrimesFrom p
   return iq
+
+-- problem 51 - prime digit replacements
+
+integerFromIntDigits :: [Int] -> Integer
+integerFromIntDigits digits = integerFromDigits $ map toInteger digits
+
+replaceDigits :: Integer -> [Int] -> Int -> Integer
+replaceDigits n locs digit = integerFromIntDigits newDigits
+  where
+    newDigits = loop locs digit (zip [1..] $ integerToDigits n)
+    loop [] _ stuff = map snd stuff
+    loop _ _ [] = []
+    loop (1:ls) 0 stuff = []
+    loop lcs@(l:ls) d ((i,v):stuff) =
+      (if i == l then d else v) : loop (if i == l then ls else lcs) d stuff
+
+subsets :: Int -> [a] -> [[a]]
+subsets 0 _ = [[]]
+subsets n [] = []
+subsets n (x:xs) = subsets n xs ++ [[x] ++ ss | ss <- subsets (n - 1) xs]
+
+primeValueFamily :: Int -> Integer -> Bool
+primeValueFamily count p = not $ null $ do
+  let digits = integerToDigits p
+  let numDigits = length digits
+  ssize <- [1 .. (numDigits - 1)]
+  subset <- subsets ssize [1 .. (numDigits - 1)]
+  let replacements = [replaceDigits p subset digit | digit <- [0..9]]
+  guard $ p `elem` replacements
+  let numPrimes = length $ filter isPrime replacements
+  guard $ numPrimes >= count
+  return p
+
+problem51 = head $ filter (primeValueFamily 8) primes
+
+-- problem 52 - permuted multiples
+
+equalSets :: Eq a => [Set.Set a] -> Bool
+equalSets [] = True
+equalSets (s:ss) = all (== s) ss
+
+equalDigits :: [Integer] -> Bool
+equalDigits ns = equalSets [Set.fromList $ integerToDigits n | n <- ns]
+
+problem52 :: Integer
+problem52 = head $ do
+  n <- [1..]
+  let multiples = [i * n | i <- [1..6]]
+  guard $ equalDigits multiples
+  return n
+
+-- problem 53 - combinatoric selections
+
+choose :: Int -> Int -> Integer
+choose n k = num `div` denom
+  where
+    num = product [toInteger (n - i) | i <- [0 .. (k - 1)]]
+    denom = product $ map toInteger [1..k]
+
+problem53 :: Int
+problem53 = length $ do
+  n <- [1..100]
+  k <- [0..n]
+  let c = n `choose` k
+  guard $ c > 1000000
+  return c
