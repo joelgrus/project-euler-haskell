@@ -1190,3 +1190,156 @@ problem53 = length $ do
   let c = n `choose` k
   guard $ c > 1000000
   return c
+
+-- problem 54 - poker hands
+
+data Suit = Hearts | Clubs | Diamonds | Spades
+  deriving (Eq, Show, Ord)
+
+data Rank = NumberCard Int | Jack | Queen | King | Ace
+  deriving (Eq, Show, Ord)
+
+rankValue :: Rank -> Int
+rankValue (NumberCard i) = i
+rankValue Jack = 11
+rankValue Queen = 12
+rankValue King = 13
+rankValue Ace = 14
+
+type Card = (Rank, Suit)
+
+type Hand = [Card]
+
+data HandType = HighCard | OnePair | TwoPair | ThreeOfAKind | Straight
+              | Flush | FullHouse | FourOfAKind | StraightFlush | RoyalFlush
+              deriving (Eq, Show, Ord)
+
+highestToLowest :: [Int] -> [Int]
+highestToLowest = List.reverse . List.sort
+
+valuesWithCount :: Int -> [(Int, Int)] -> [Int]
+valuesWithCount dc pairs = highestToLowest [n | (n, c) <- pairs, c == dc]
+
+valuesWithCounts :: [Int] -> [(Int, Int)] -> [Int]
+valuesWithCounts dcs pairs = do
+  dc <- dcs
+  n <- valuesWithCount dc pairs
+  return n
+
+judgeHand :: Hand -> (HandType, [Int])
+judgeHand cards =
+  if isFlush && isStraight && highestRank == 14 then (RoyalFlush, [14, 13, 12, 11, 10])
+  else if isFlush && isStraight then (StraightFlush, highestToLowest rankValues)
+  else if isFour then (FourOfAKind, valuesWithCounts [4,1] occurList)
+  else if isThree && numPairs > 0 then (FullHouse, valuesWithCounts [3,2] occurList)
+  else if isFlush then (Flush, highestToLowest rankValues)
+  else if isStraight then (Straight, highestToLowest rankValues)
+  else if isThree then (ThreeOfAKind, valuesWithCounts [3, 1] occurList)
+  else if numPairs == 2 then (TwoPair, valuesWithCounts [2, 1] occurList)
+  else if numPairs == 1 then (OnePair, valuesWithCounts [2, 1] occurList)
+  else (HighCard, highestToLowest rankValues)
+  where
+    suits = Set.fromList $ map snd cards
+    rankValues = map (rankValue. fst) cards
+    rankValuesMS = MultiSet.fromList rankValues
+    isFlush = 1 == Set.size suits
+    isStraight = (5 == MultiSet.distinctSize rankValuesMS) &&
+      (4 == (maximum rankValues) - (minimum rankValues))
+    occurList = MultiSet.toOccurList rankValuesMS
+    occurCounts = map snd occurList
+    isFour = 4 `elem` occurCounts
+    isThree = 3 `elem` occurCounts
+    numPairs = length $ filter (== 2) occurCounts
+    highestRank = maximum rankValues
+
+readCard :: String -> Card
+readCard (r:s:[]) = (rank, suit)
+  where
+    suit = case s of
+      'S' -> Spades
+      'D' -> Diamonds
+      'C' -> Clubs
+      'H' -> Hearts
+      otherwise -> error "bad card"
+    rank = case r of
+      'T' -> NumberCard 10
+      'J' -> Jack
+      'Q' -> Queen
+      'K' -> King
+      'A' -> Ace
+      x -> NumberCard $ read [x]
+
+player1Wins :: Hand -> Hand -> Bool
+player1Wins hand1 hand2 =
+  (judgeHand hand1) > (judgeHand hand2)
+
+problem54 :: IO Int
+problem54 = do
+  text <- readFile "p054_poker.txt"
+  return $ length $ do
+    line <- lines text
+    let cards = trace line $ map readCard (words line)
+    guard $ player1Wins (take 5 cards) (drop 5 cards)
+    return cards
+
+-- problem 55 - lychrel numbers
+
+reverseInteger :: Integer -> Integer
+reverseInteger = integerFromDigits . map toInteger . reverse . integerToDigits
+
+lychrelize :: Integer -> Integer
+lychrelize n = n + reverseInteger n
+
+isLychrel :: Integer -> Bool
+isLychrel = null . filter isPalindrome . take 50 . drop 1 . iterate lychrelize
+
+problem55 :: Int
+problem55 = length $ filter isLychrel [1..10000]
+
+-- problem 56 - powerful digit sum
+
+problem56 :: Int
+problem56 = maximum $ do
+  a <- [1..100]
+  b <- [1..100]
+  return $ sum $ integerToDigits $ a ^ b
+
+-- problem 57 - square root convergents
+type BigFrac = (Integer, Integer)
+
+invert :: BigFrac -> BigFrac
+invert (a, b) = (b, a)
+
+addOne :: BigFrac -> BigFrac
+addOne (a, b) = reduce (a + b, b)
+
+reduce :: BigFrac -> BigFrac
+reduce (a, b) = (a `div` c, b `div` c)
+  where c = gcd a b
+
+continuedFraction :: [BigFrac]
+continuedFraction = iterate (addOne . invert . addOne) (3, 2)
+
+problem57 :: Int
+problem57 = length $ filter numeratorMoreDigits $ take 1000 continuedFraction
+  where
+    numDigits n = length $ integerToDigits n
+    numeratorMoreDigits (a, b) = (numDigits a) > (numDigits b)
+
+-- problem 58 - spiral primes
+type IndexPrimesTotal = (Int, Integer, Integer)
+
+spiralPrime :: IndexPrimesTotal -> IndexPrimesTotal
+spiralPrime (i, p, t) = (i + 1, p + p', t + t')
+  where
+    newElements = diagonalValues (i + 1)
+    p' = toInteger $ length $ filter isPrime $ map toInteger newElements
+    t' = toInteger $ length newElements
+
+spiralPrimeValues = iterate spiralPrime (1, 3, 5)
+
+problem58 :: Int
+problem58 = 2 * i + 1
+  where
+    (i, _, _) = head $ dropWhile tooManyPrimes $ spiralPrimeValues
+    tooManyPrimes (_, p, t) = 10 * p >= t
